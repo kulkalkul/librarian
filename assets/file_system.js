@@ -80,9 +80,9 @@ async function close(stream) {
   }
 }
 
-async function save_to_file(handle, file_data) {
-  if (handle === null) {
-    handle = showSaveFilePicker();
+export async function save_to_file(handle, file_data) {
+  if (!handle) {
+    handle = await showSaveFilePicker();
   }
 
   let stream = createWritable(handle);
