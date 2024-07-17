@@ -1,34 +1,42 @@
 const ERRORS = {
-  UnknownError: 0,
-  ShowSaveFilePickerAbort: 1,
-  ShowSaveFilePickerSecurity: 2,
-  ShowSaveFilePickerType: 3,
-  CreateWritableNotAllowed: 4,
-  CreateWritableNotFound: 5,
-  CreateWritableNoModificationAllowed: 6,
-  CreateWritableAbort: 7,
-  WriteNotAllowed: 8,
-  WriteQuotaExceeded: 9,
-  WriteType: 10,
-  CloseType: 11,
+  Unknown: 0,
+  ShowSaveUnknown: 1,
+  ShowSaveFilePickerAbort: 2,
+  ShowSaveFilePickerSecurity: 3,
+  ShowSaveFilePickerType: 4,
+  CreateWritableUnknown: 5,
+  CreateWritableNotAllowed: 6,
+  CreateWritableNotFound: 7,
+  CreateWritableNoModificationAllowed: 8,
+  CreateWritableAbort: 9,
+  WriteUnknown: 10,
+  WriteNotAllowed: 11,
+  WriteQuotaExceeded: 12,
+  WriteType: 13,
+  CloseUnknown: 14,
+  CloseType: 15,
 };
 const SHOW_SAVE_FILE_PICKER_ERRORS = {
+  Unknown: ERRORS.ShowSaveUnknown,
   AbortError: ERRORS.ShowSaveFilePickerAbort,
-  SecurityErrror: ERRORS.ShowSaveFilePickerSecurity,
+  SecurityError: ERRORS.ShowSaveFilePickerSecurity,
   TypeError: ERRORS.ShowSaveFilePickerType,
 };
 const CREATE_WRITABLE_ERRORS = {
-  NotAllowed: ERRORS.CreateWritableNotAllowed,
-  NotFound: ERRORS.CreateWritableNotFound,
-  NoModificationAllowed: ERRORS.CreateWritableNoModificationAllowed,
-  Abort: ERRORS.CreateWritableAbort,
+  Unknown: ERRORS.CreateWritableUnknown,
+  NotAllowedError: ERRORS.CreateWritableNotAllowed,
+  NotFoundError: ERRORS.CreateWritableNotFound,
+  NoModificationAllowedError: ERRORS.CreateWritableNoModificationAllowed,
+  AbortError: ERRORS.CreateWritableAbort,
 };
 const WRITE_ERRORS = {
-  NotAllowed: ERRORS.WriteNotAllowed,
-  QuotaExceeded: ERRORS.QuotaExceeded,
+  Unknown: ERRORS.WriteUnknown,
+  NotAllowedError: ERRORS.WriteNotAllowed,
+  QuotaExceededError: ERRORS.QuotaExceeded,
   TypeError: ERRORS.WriteType,
 };
 const CLOSE_ERRORS = {
+  Unknown: ERRORS.CloseUnknown,
   TypeError: ERRORS.CloseType,
 };
 
@@ -37,7 +45,7 @@ function matchErr(errors, err) {
   if (Number.isInteger(err)) {
     return err;
   }
-  return ERRORS.UnknownError;
+  return errors.Unknown;
 }
 
 async function showSaveFilePicker() {

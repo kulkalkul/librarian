@@ -15,6 +15,8 @@ mod errors {
     pub enum FileSystemJsError {
         /// Thrown if none of the below errors matched on JS side.
         UnknownError,
+        /// Thrown if this is an unknown error from file picker.
+        ShowSaveFilePickerUnknown,
         /// Thrown if the user dismisses the file picker without selecting or inputting a file, or if
         /// the user agent deems any selected files too sensitive or dangerous.
         ShowSaveFilePickerAbort,
@@ -30,6 +32,8 @@ mod errors {
         /// points and its length is more than 16.
         /// - The types options is empty and the excludeAcceptAllOption options is true.
         ShowSaveFilePickerType,
+        /// Thrown if this is an unknown error from create writable.
+        CreateWritableUnknown,
         /// Thrown if the PermissionStatus.state for the handle is not 'granted' in readwrite mode.
         CreateWritableNotAllowed,
         /// Thrown if current entry is not found.
@@ -38,6 +42,8 @@ mod errors {
         CreateWritableNoModificationAllowed,
         /// Thrown if implementation-defined malware scans and safe-browsing checks fails.
         CreateWritableAbort,
+        /// Thrown if this is an unknown error from write.
+        WriteUnknown,
         /// Thrown if PermissionStatus.state is not granted.
         WriteNotAllowed,
         /// Thrown if the new size of the file is larger than the original size of the file, and exceeds
@@ -45,6 +51,8 @@ mod errors {
         WriteQuotaExceeded,
         /// Thrown if data is undefined, or if position or size aren't valid.
         WriteType,
+        /// Thrown if this is an unknown error from close.
+        CloseUnknown,
         /// The stream you are trying to close is locked.
         CloseType,
     }
@@ -64,20 +72,24 @@ mod errors {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Self::UnknownError => write!(f, "Unknown error"),
+                Self::ShowSaveFilePickerUnknown => write!(f, "Show save file picker unknown error"),
                 Self::ShowSaveFilePickerAbort => write!(f, "Show save file picker abort error"),
                 Self::ShowSaveFilePickerSecurity => {
                     write!(f, "Show save file picker security error")
                 }
                 Self::ShowSaveFilePickerType => write!(f, "Show save file picker type error"),
+                Self::CreateWritableUnknown => write!(f, "Show create writable unknown error"),
                 Self::CreateWritableNotAllowed => write!(f, "Create writable not allowed error"),
                 Self::CreateWritableNotFound => write!(f, "Create writable not found error"),
                 Self::CreateWritableNoModificationAllowed => {
                     write!(f, "Create writable no modification allowed error")
                 }
                 Self::CreateWritableAbort => write!(f, "Create writable abort error"),
+                Self::WriteUnknown => write!(f, "Write unknown error"),
                 Self::WriteNotAllowed => write!(f, "Write not allowed error"),
                 Self::WriteQuotaExceeded => write!(f, "Write quota exceeded error"),
                 Self::WriteType => write!(f, "Write type error"),
+                Self::CloseUnknown => write!(f, "Close unknown error"),
                 Self::CloseType => write!(f, "Close type error"),
             }
         }
@@ -114,17 +126,21 @@ pub async fn save_to_file(
         },
         Err(err) => match err.as_f64().map(|x| x as u32) {
             Some(0) => Err(FSE::JsError(FSJE::UnknownError)),
-            Some(1) => Err(FSE::JsError(FSJE::ShowSaveFilePickerAbort)),
-            Some(2) => Err(FSE::JsError(FSJE::ShowSaveFilePickerSecurity)),
-            Some(3) => Err(FSE::JsError(FSJE::ShowSaveFilePickerType)),
-            Some(4) => Err(FSE::JsError(FSJE::CreateWritableNotAllowed)),
-            Some(5) => Err(FSE::JsError(FSJE::CreateWritableNotAllowed)),
-            Some(6) => Err(FSE::JsError(FSJE::CreateWritableNoModificationAllowed)),
-            Some(7) => Err(FSE::JsError(FSJE::CreateWritableAbort)),
-            Some(8) => Err(FSE::JsError(FSJE::WriteNotAllowed)),
-            Some(9) => Err(FSE::JsError(FSJE::WriteQuotaExceeded)),
-            Some(10) => Err(FSE::JsError(FSJE::WriteType)),
-            Some(11) => Err(FSE::JsError(FSJE::CloseType)),
+            Some(1) => Err(FSE::JsError(FSJE::ShowSaveFilePickerUnknown)),
+            Some(2) => Err(FSE::JsError(FSJE::ShowSaveFilePickerAbort)),
+            Some(3) => Err(FSE::JsError(FSJE::ShowSaveFilePickerSecurity)),
+            Some(4) => Err(FSE::JsError(FSJE::ShowSaveFilePickerType)),
+            Some(5) => Err(FSE::JsError(FSJE::CreateWritableUnknown)),
+            Some(6) => Err(FSE::JsError(FSJE::CreateWritableNotAllowed)),
+            Some(7) => Err(FSE::JsError(FSJE::CreateWritableNotAllowed)),
+            Some(8) => Err(FSE::JsError(FSJE::CreateWritableNoModificationAllowed)),
+            Some(9) => Err(FSE::JsError(FSJE::CreateWritableAbort)),
+            Some(10) => Err(FSE::JsError(FSJE::WriteUnknown)),
+            Some(11) => Err(FSE::JsError(FSJE::WriteNotAllowed)),
+            Some(12) => Err(FSE::JsError(FSJE::WriteQuotaExceeded)),
+            Some(13) => Err(FSE::JsError(FSJE::WriteType)),
+            Some(14) => Err(FSE::JsError(FSJE::CloseUnknown)),
+            Some(15) => Err(FSE::JsError(FSJE::CloseType)),
             // Explicit remaining case
             Some(_) => Err(FSE::InvalidErrorType),
             None => Err(FSE::InvalidErrorType),
