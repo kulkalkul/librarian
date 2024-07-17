@@ -1,4 +1,4 @@
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::FileSystemFileHandle;
 
 pub use errors::*;
@@ -98,15 +98,11 @@ mod errors {
 
 mod inner {
     use wasm_bindgen::prelude::*;
-    use web_sys::FileSystemFileHandle;
 
     #[wasm_bindgen(module = "/assets/file_system.js")]
     extern "C" {
         #[wasm_bindgen(catch)]
-        pub async fn save_to_file(
-            handle: Option<FileSystemFileHandle>,
-            file_data: String,
-        ) -> Result<JsValue, JsValue>;
+        pub async fn save_to_file(handle: JsValue, file_data: String) -> Result<JsValue, JsValue>;
     }
 }
 
@@ -114,6 +110,10 @@ pub async fn save_to_file(
     handle: Option<FileSystemFileHandle>,
     file_data: String,
 ) -> Result<FileSystemFileHandle, FileSystemError> {
+    let handle = match handle {
+        Some(handle) => handle.into(),
+        None => JsValue::NULL,
+    };
     let result = inner::save_to_file(handle, file_data).await;
 
     use FileSystemError as FSE;
