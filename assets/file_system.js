@@ -87,7 +87,7 @@ export async function save_to_file(handle, file_data) {
 
   let stream = await createWritable(handle);
 
-  await write(stream);
+  await write(stream, file_data);
   await close(stream);
 
   return handle;
