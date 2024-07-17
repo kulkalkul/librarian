@@ -15,3 +15,7 @@ dx serve --hot-reload
 ```
 
 - Open the browser to http://localhost:8080
+
+## License
+
+Double licensed with MIT and APACHE.
