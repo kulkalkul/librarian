@@ -4,19 +4,24 @@ mod arena;
 mod bit_field;
 mod button;
 mod file_system;
+mod local_file;
 mod store;
 mod world;
 
 use arena::ArenaId;
 use button::{Button, ButtonSize};
 use dioxus::prelude::*;
+use file_system::save_to_file;
 use futures_util::StreamExt;
 use idb::{DatabaseEvent, Factory, ObjectStoreParams, TransactionMode};
+use local_file::{ToLocalFile, LOCAL_FILE_VERSION};
 use serde::Serialize;
 use serde_wasm_bindgen::Serializer;
 use store::{Bookmark, Store};
 use tracing::Level;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsCast, JsValue};
+use web_sys::FileSystemFileHandle;
+
 
 fn main() {
     // Init logger
@@ -25,11 +30,18 @@ fn main() {
 }
 
 enum Action {
-    AddBookmark {
+    CreateBookmark {
         title: String,
         link: String,
         note: String,
     },
+    Sync,
+}
+
+struct CreateBookmark {
+    title: String,
+    link: String,
+    note: String,
 }
 
 #[component]
@@ -39,7 +51,8 @@ fn App() -> Element {
     let mut drawer_link = use_signal(|| String::new());
     let mut drawer_note = use_signal(|| String::new());
 
-    // PERF: Don't ever read this
+    // Don't ever read this. Only write in coroutine. Drop write access before any .await.
+    // It is safe to peek it everywhere.
     let mut store = use_signal(move || Store::new());
     let mut cards = use_signal(move || Vec::with_capacity(0));
 
@@ -60,12 +73,18 @@ fn App() -> Element {
             database
                 .create_object_store("bookmarks", store_params)
                 .expect("should be able to create store");
+
+            let store_params = ObjectStoreParams::new();
+
+            database
+                .create_object_store("handles", store_params)
+                .expect("should be able to create store");
         });
 
         let indexed_db = indexed_db.await.expect("should be able to open DB");
 
         let transaction = indexed_db
-            .transaction(&["bookmarks"], TransactionMode::ReadOnly)
+            .transaction(&["bookmarks", "handles"], TransactionMode::ReadOnly)
             .expect("should be able to create transaction");
         let bookmarks_os = transaction
             .object_store("bookmarks")
@@ -77,47 +96,137 @@ fn App() -> Element {
             .await
             .expect("should be able to get all entries");
 
-        let mut store_access = store.write();
+        let handles_os = transaction
+            .object_store("handles")
+            .expect("should be able to access object store");
 
-        for entry in entries {
-            let bookmark: Bookmark =
-                serde_wasm_bindgen::from_value(entry).expect("should be able to deserialize");
-            store_access.add_bookmark(bookmark);
+        let initial_handle_name = JsValue::from_str("initial_file");
+        let mut handle = handles_os
+            .get(initial_handle_name.clone())
+            .expect("should be able to access initial file")
+            .await
+            .expect("should be able to get initial file")
+            .and_then(|x| x.dyn_into::<FileSystemFileHandle>().ok());
+
+        {
+            let mut store_mut = store.write();
+
+            for entry in entries {
+                let bookmark: Bookmark =
+                    serde_wasm_bindgen::from_value(entry).expect("should be able to deserialize");
+                store_mut.add_bookmark(bookmark);
+            }
+
+            *cards.write() = store_mut.all_ids().collect();
         }
 
-        *cards.write() = store_access.all().collect();
+        transaction
+            .await
+            .expect("transaction should be able to complete");
 
-        drop(transaction);
         drop(bookmarks_os);
-        drop(store_access);
+        drop(handles_os);
+
+        let mut created_bookmarks: Vec<CreateBookmark> = Vec::with_capacity(128);
 
         while let Some(action) = rx.next().await {
-            let mut store = store.write();
-
             match action {
-                Action::AddBookmark { title, link, note } => {
-                    store.create_bookmark(&title, &link, &note);
+                Action::CreateBookmark { title, link, note } => {
+                    created_bookmarks.push(CreateBookmark {
+                        title: title.to_owned(),
+                        link: link.to_owned(),
+                        note: note.to_owned(),
+                    });
+                }
+                Action::Sync => {
+                    let file_data = {
+                        let store_ref = store.peek();
+
+                        let to_local_file = ToLocalFile {
+                            version: LOCAL_FILE_VERSION,
+                            bookmarks: store_ref.all_data().collect(),
+                        };
+
+                        serde_json::to_string_pretty(&to_local_file)
+                            .expect("should be able to serialize")
+                    };
+
+                    let returned_handle = save_to_file(handle.clone(), file_data)
+                        .await
+                        .expect("should be able to save");
+
+                    if handle.is_none() {
+                        handle = Some(returned_handle.clone());
+
+                        let transaction = indexed_db
+                            .transaction(&["handles"], TransactionMode::ReadWrite)
+                            .expect("should be able to create transaction");
+
+                        let handles_os = transaction
+                            .object_store("handles")
+                            .expect("should be able to access object store");
+
+                        handles_os
+                            .put(&returned_handle, Some(&initial_handle_name))
+                            .expect("should be able to write the handle")
+                            .await
+                            .expect("should be able to write the handle");
+
+                        transaction
+                            .await
+                            .expect("transaction should be able to complete");
+                    }
                 }
             }
 
-            if let Some(changes) = store.changes() {
-                let transaction = indexed_db
-                    .transaction(&["bookmarks"], TransactionMode::ReadWrite)
-                    .expect("should be able to create transaction");
-
-                let bookmarks = transaction
-                    .object_store("bookmarks")
-                    .expect("should be able to access object store");
-
-                for (id, bookmark) in changes {
-                    let bookmark = bookmark
-                        .serialize(&serializer)
-                        .expect("should be able to serialize");
-                    let _ = bookmarks.put(&bookmark, Some(&JsValue::from_f64(id.id() as f64)));
+            {
+                let mut store_mut = store.write();
+                for CreateBookmark { title, link, note } in created_bookmarks.drain(..) {
+                    store_mut.create_bookmark(&title, &link, &note);
                 }
             }
 
-            *cards.write() = store.all().collect();
+            // Sync to UI
+            {
+                let store_ref = store.peek();
+                *cards.write() = store_ref.all_ids().collect();
+            }
+
+            let changes = {
+                let mut store_mut = store.write();
+                store_mut.changes().map(|x| x.collect::<Vec<_>>())
+            };
+
+            // Sync to IndexedDB
+            {
+                let store_ref = store.peek();
+
+                if let Some(changes) = changes {
+                    let transaction = indexed_db
+                        .transaction(&["bookmarks"], TransactionMode::ReadWrite)
+                        .expect("should be able to create transaction");
+
+                    let bookmarks = transaction
+                        .object_store("bookmarks")
+                        .expect("should be able to access object store");
+
+                    for id in changes {
+                        let bookmark = store_ref.bookmark(id);
+                        let bookmark = bookmark
+                            .serialize(&serializer)
+                            .expect("should be able to serialize");
+                        bookmarks
+                            .put(&bookmark, Some(&JsValue::from_f64(id.id() as f64)))
+                            .expect("should be able to write bookmark")
+                            .await
+                            .expect("should be able to write bookmark");
+                    }
+
+                    transaction
+                        .await
+                        .expect("transaction should be able to complete");
+                }
+            }
         }
     });
 
@@ -130,7 +239,7 @@ fn App() -> Element {
     });
 
     let onclick = move |_| {
-        coroutine.send(Action::AddBookmark {
+        coroutine.send(Action::CreateBookmark {
             title: drawer_title.cloned(),
             link: drawer_link.cloned(),
             note: drawer_note.cloned(),
