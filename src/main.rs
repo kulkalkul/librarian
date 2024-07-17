@@ -3,6 +3,7 @@
 mod arena;
 mod bit_field;
 mod button;
+mod file_system;
 mod store;
 mod world;
 
