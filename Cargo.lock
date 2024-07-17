@@ -1657,6 +1657,7 @@ dependencies = [
  "idb",
  "serde",
  "serde-wasm-bindgen 0.6.5",
+ "serde_json",
  "tracing",
  "wasm-bindgen",
  "wasm-bindgen-futures",
