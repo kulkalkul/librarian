@@ -85,7 +85,7 @@ export async function save_to_file(handle, file_data) {
     handle = await showSaveFilePicker();
   }
 
-  let stream = createWritable(handle);
+  let stream = await createWritable(handle);
 
   await write(stream);
   await close(stream);
