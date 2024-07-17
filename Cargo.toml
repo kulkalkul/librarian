@@ -1,0 +1,12 @@
+[package]
+name = "librarian"
+version = "0.1.0"
+authors = ["Bora"]
+edition = "2021"
+
+[dependencies]
+dioxus = { git = "https://github.com/DioxusLabs/dioxus", features = ["web"] }
+
+# Debug
+tracing = { version = "0.1.40", features = ["log"] }
+dioxus-logger = "0.5.0"
