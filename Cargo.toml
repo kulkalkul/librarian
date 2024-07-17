@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Bora"]
 edition = "2021"
 
+[profile.dev]
+debug = 0
+strip = "debuginfo"
+
 [dependencies]
 dioxus = { git = "https://github.com/DioxusLabs/dioxus", features = ["web"] }
 
