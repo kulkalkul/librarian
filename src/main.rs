@@ -99,19 +99,22 @@ fn App() -> Element {
                     store.create_bookmark(&title, &link, &note);
                 }
             }
-            let transaction = indexed_db
-                .transaction(&["bookmarks"], TransactionMode::ReadWrite)
-                .expect("should be able to create transaction");
 
-            let bookmarks = transaction
-                .object_store("bookmarks")
-                .expect("should be able to access object store");
+            if let Some(changes) = store.changes() {
+                let transaction = indexed_db
+                    .transaction(&["bookmarks"], TransactionMode::ReadWrite)
+                    .expect("should be able to create transaction");
 
-            for (id, bookmark) in store.changes() {
-                let bookmark = bookmark
-                    .serialize(&serializer)
-                    .expect("should be able to serialize");
-                let _ = bookmarks.put(&bookmark, Some(&JsValue::from_f64(id.id() as f64)));
+                let bookmarks = transaction
+                    .object_store("bookmarks")
+                    .expect("should be able to access object store");
+
+                for (id, bookmark) in changes {
+                    let bookmark = bookmark
+                        .serialize(&serializer)
+                        .expect("should be able to serialize");
+                    let _ = bookmarks.put(&bookmark, Some(&JsValue::from_f64(id.id() as f64)));
+                }
             }
 
             *cards.write() = store.all().collect();
@@ -190,6 +193,14 @@ fn App() -> Element {
                             value: "New",
                             size: ButtonSize::Big,
                             onclick: move |_| drawer_enabled.set(!drawer_enabled()),
+                        }
+                    }
+                    span {
+                        class: "mx-8",
+                        Button {
+                            value: "Sync",
+                            size: ButtonSize::Big,
+                            onclick: move |_| coroutine.send(Action::Sync),
                         }
                     }
                     input {

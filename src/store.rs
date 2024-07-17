@@ -111,10 +111,19 @@ impl Store {
     pub fn all<'a>(&'a self) -> IterArenaIds<'a, Bookmark> {
         self.bookmarks.iter_ids()
     }
-    pub fn changes<'a>(&'a mut self) -> impl Iterator<Item = (ArenaId<Bookmark>, &'a Bookmark)> {
-        self.changes
-            .drain(..)
-            .map(|id| (id, self.bookmarks.entry(id).value))
+    pub fn changes<'a>(
+        &'a mut self,
+    ) -> Option<impl Iterator<Item = (ArenaId<Bookmark>, &'a Bookmark)>> {
+        if self.changes.is_empty() {
+            None
+        } else {
+            let changes = self
+                .changes
+                .drain(..)
+                .map(|id| (id, self.bookmarks.entry(id).value));
+
+            Some(changes)
+        }
     }
 }
 
