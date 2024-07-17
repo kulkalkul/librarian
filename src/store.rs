@@ -108,7 +108,10 @@ impl Store {
     pub fn bookmark(&self, id: ArenaId<Bookmark>) -> &Bookmark {
         self.bookmarks.entry(id).value
     }
-    pub fn all<'a>(&'a self) -> IterArenaIds<'a, Bookmark> {
+    pub fn all_data<'a>(&'a self) -> impl Iterator<Item = &'a Bookmark> {
+        self.bookmarks.iter().map(|x| x.value)
+    }
+    pub fn all_ids<'a>(&'a self) -> IterArenaIds<'a, Bookmark> {
         self.bookmarks.iter_ids()
     }
     pub fn changes<'a>(
