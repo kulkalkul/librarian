@@ -554,8 +554,8 @@ video {
   --tw-contain-style:  ;
 }
 
-.fixed {
-  position: fixed;
+.static {
+  position: static;
 }
 
 .sticky {
@@ -564,10 +564,6 @@ video {
 
 .top-0 {
   top: 0px;
-}
-
-.bottom-0 {
-  bottom: 0px;
 }
 
 .mx-8 {
@@ -593,10 +589,6 @@ video {
 
 .h-80 {
   height: 20rem;
-}
-
-.h-full {
-  height: 100%;
 }
 
 .min-h-full {
@@ -663,10 +655,6 @@ video {
 
 .gap-8 {
   gap: 2rem;
-}
-
-.text-wrap {
-  text-wrap: wrap;
 }
 
 .break-words {
