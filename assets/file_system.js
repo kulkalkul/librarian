@@ -41,9 +41,9 @@ const CLOSE_ERRORS = {
 };
 
 function matchErr(errors, err) {
-  let err = errors[err.name];
-  if (Number.isInteger(err)) {
-    return err;
+  let name = errors[err.name];
+  if (Number.isInteger(name)) {
+    return name;
   }
   return errors.Unknown;
 }
